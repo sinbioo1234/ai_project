@@ -15,16 +15,19 @@ st.set_page_config(
 )
 
 st.title("🌍 MBTI 국가 분석기")
+
 st.markdown("""
-### 사용 방법
-1. MBTI 유형 선택
-2. 해당 MBTI 비율이 높은 국가 확인
-3. 국가 선택
-4. 국가의 전체 MBTI 분포 확인
+### 기능
+- MBTI 유형 선택
+- 해당 MBTI 비율이 높은 국가 확인
+- 국가 선택
+- 국가별 전체 MBTI 분포 그래프 확인
+- 그래프에서 MBTI 클릭 시:
+    → 해당 MBTI 비율이 높은 국가 자동 정렬
 """)
 
 # --------------------------------
-# 데이터 불러오기
+# 데이터 로드
 # --------------------------------
 @st.cache_data
 def load_data():
@@ -43,15 +46,24 @@ mbti_types = [
 ]
 
 # --------------------------------
+# 세션 상태 초기화
+# --------------------------------
+if "selected_mbti" not in st.session_state:
+    st.session_state.selected_mbti = "INFP"
+
+# --------------------------------
 # MBTI 선택
 # --------------------------------
 selected_mbti = st.selectbox(
-    "🧠 MBTI 유형 선택",
-    mbti_types
+    "🧠 MBTI 선택",
+    mbti_types,
+    index=mbti_types.index(st.session_state.selected_mbti)
 )
 
+st.session_state.selected_mbti = selected_mbti
+
 # --------------------------------
-# 선택 MBTI 기준 국가 정렬
+# MBTI 비율 높은 국가 정렬
 # --------------------------------
 ranked_df = df.sort_values(
     by=selected_mbti,
@@ -59,11 +71,9 @@ ranked_df = df.sort_values(
 ).reset_index(drop=True)
 
 # --------------------------------
-# 국가 리스트 생성
+# TOP 10 표시
 # --------------------------------
-country_options = ranked_df["Country"].tolist()
-
-st.subheader(f"🌎 {selected_mbti} 비율이 높은 국가")
+st.subheader(f"🌎 {selected_mbti} 비율 TOP 국가")
 
 top10 = ranked_df[["Country", selected_mbti]].head(10)
 
@@ -79,19 +89,17 @@ st.dataframe(
 # --------------------------------
 selected_country = st.selectbox(
     "🏳️ 국가 선택",
-    country_options
+    ranked_df["Country"].tolist()
 )
 
 # --------------------------------
-# 국가 데이터 추출
+# 국가 데이터
 # --------------------------------
 country_data = df[df["Country"] == selected_country].iloc[0]
 
-mbti_values = country_data[mbti_types]
-
 chart_df = pd.DataFrame({
     "MBTI": mbti_types,
-    "Ratio": mbti_values.values
+    "Ratio": [country_data[m] for m in mbti_types]
 })
 
 # --------------------------------
@@ -119,7 +127,7 @@ for i in range(len(chart_df)):
         colors.append(blue_scale[idx])
 
 # --------------------------------
-# Plotly 그래프
+# 그래프 생성
 # --------------------------------
 fig = go.Figure()
 
@@ -130,18 +138,16 @@ fig.add_trace(
         marker_color=colors,
         text=[f"{v:.2%}" for v in chart_df["Ratio"]],
         textposition="outside",
+        customdata=chart_df["MBTI"],
         hovertemplate=
         "<b>%{x}</b><br>" +
         "비율: %{y:.2%}<extra></extra>"
     )
 )
 
-# --------------------------------
-# 그래프 레이아웃
-# --------------------------------
 fig.update_layout(
     title=f"{selected_country} MBTI 분포",
-    xaxis_title="MBTI 유형",
+    xaxis_title="MBTI",
     yaxis_title="비율",
     template="plotly_white",
     height=650,
@@ -151,15 +157,32 @@ fig.update_layout(
 fig.update_yaxes(tickformat=".0%")
 
 # --------------------------------
-# 그래프 출력
+# Plotly 클릭 이벤트
+# streamlit-plotly-events 필요
 # --------------------------------
-st.plotly_chart(
+from streamlit_plotly_events import plotly_events
+
+selected_points = plotly_events(
     fig,
-    use_container_width=True
+    click_event=True,
+    hover_event=False,
+    select_event=False,
+    override_height=650,
+    key="mbti_chart"
 )
 
 # --------------------------------
-# 최고 MBTI 표시
+# 클릭 시 MBTI 변경
+# --------------------------------
+if selected_points:
+    clicked_mbti = selected_points[0]["x"]
+
+    if clicked_mbti != st.session_state.selected_mbti:
+        st.session_state.selected_mbti = clicked_mbti
+        st.rerun()
+
+# --------------------------------
+# 최고 MBTI
 # --------------------------------
 top_mbti = chart_df.iloc[0]
 
@@ -171,7 +194,7 @@ st.success(
 )
 
 # --------------------------------
-# 원본 데이터
+# 데이터 테이블
 # --------------------------------
 with st.expander("📄 전체 데이터 보기"):
     st.dataframe(
