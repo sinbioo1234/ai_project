@@ -136,13 +136,3 @@ with st.expander("원본 데이터 보기"):
         chart_df,
         use_container_width=True
     )
-# requirements.txt
-
-streamlit
-pandas
-plotly
-your_project/
-│
-├── app.py
-├── requirements.txt
-└── countriesMBTI_16types.csv
