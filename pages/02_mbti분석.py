@@ -1,9 +1,8 @@
-# app.py
-
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+from streamlit_plotly_events import plotly_events
 
 # --------------------------------
 # 페이지 설정
@@ -14,6 +13,9 @@ st.set_page_config(
     layout="wide"
 )
 
+# --------------------------------
+# 제목
+# --------------------------------
 st.title("🌍 MBTI 국가 분석기")
 
 st.markdown("""
@@ -21,9 +23,9 @@ st.markdown("""
 - MBTI 유형 선택
 - 해당 MBTI 비율이 높은 국가 확인
 - 국가 선택
-- 국가별 전체 MBTI 분포 그래프 확인
-- 그래프에서 MBTI 클릭 시:
-    → 해당 MBTI 비율이 높은 국가 자동 정렬
+- 국가별 MBTI 분포 확인
+- 그래프 막대 클릭 가능
+- 클릭한 MBTI 기준으로 국가 자동 재정렬
 """)
 
 # --------------------------------
@@ -46,7 +48,7 @@ mbti_types = [
 ]
 
 # --------------------------------
-# 세션 상태 초기화
+# 세션 상태
 # --------------------------------
 if "selected_mbti" not in st.session_state:
     st.session_state.selected_mbti = "INFP"
@@ -63,7 +65,7 @@ selected_mbti = st.selectbox(
 st.session_state.selected_mbti = selected_mbti
 
 # --------------------------------
-# MBTI 비율 높은 국가 정렬
+# MBTI 기준 국가 정렬
 # --------------------------------
 ranked_df = df.sort_values(
     by=selected_mbti,
@@ -71,16 +73,21 @@ ranked_df = df.sort_values(
 ).reset_index(drop=True)
 
 # --------------------------------
-# TOP 10 표시
+# TOP 10 국가 표시
 # --------------------------------
 st.subheader(f"🌎 {selected_mbti} 비율 TOP 국가")
 
 top10 = ranked_df[["Country", selected_mbti]].head(10)
 
+top10_display = top10.copy()
+top10_display[selected_mbti] = (
+    top10_display[selected_mbti] * 100
+).round(2).astype(str) + "%"
+
+top10_display.columns = ["국가", "비율"]
+
 st.dataframe(
-    top10.rename(columns={
-        selected_mbti: "비율"
-    }),
+    top10_display,
     use_container_width=True
 )
 
@@ -93,13 +100,18 @@ selected_country = st.selectbox(
 )
 
 # --------------------------------
-# 국가 데이터
+# 국가 데이터 추출
 # --------------------------------
-country_data = df[df["Country"] == selected_country].iloc[0]
+country_data = df[
+    df["Country"] == selected_country
+].iloc[0]
 
 chart_df = pd.DataFrame({
     "MBTI": mbti_types,
-    "Ratio": [country_data[m] for m in mbti_types]
+    "Ratio": [
+        float(country_data[m])
+        for m in mbti_types
+    ]
 })
 
 # --------------------------------
@@ -123,20 +135,23 @@ for i in range(len(chart_df)):
     if i == 0:
         colors.append("#ff3b30")
     else:
-        idx = min(i + 2, len(blue_scale) - 1)
+        idx = min(i + 3, len(blue_scale) - 1)
         colors.append(blue_scale[idx])
 
 # --------------------------------
-# 그래프 생성
+# Plotly 그래프
 # --------------------------------
 fig = go.Figure()
 
 fig.add_trace(
     go.Bar(
-        x=chart_df["MBTI"],
-        y=chart_df["Ratio"],
+        x=chart_df["MBTI"].tolist(),
+        y=chart_df["Ratio"].tolist(),
         marker_color=colors,
-        text=[f"{v:.2%}" for v in chart_df["Ratio"]],
+        text=[
+            f"{v:.2%}"
+            for v in chart_df["Ratio"]
+        ],
         textposition="outside",
         customdata=chart_df["MBTI"],
         hovertemplate=
@@ -145,6 +160,9 @@ fig.add_trace(
     )
 )
 
+# --------------------------------
+# 그래프 레이아웃
+# --------------------------------
 fig.update_layout(
     title=f"{selected_country} MBTI 분포",
     xaxis_title="MBTI",
@@ -154,14 +172,19 @@ fig.update_layout(
     hovermode="x unified"
 )
 
-fig.update_yaxes(tickformat=".0%")
+fig.update_yaxes(
+    tickformat=".0%",
+    rangemode="tozero"
+)
+
+fig.update_xaxes(
+    categoryorder="array",
+    categoryarray=chart_df["MBTI"].tolist()
+)
 
 # --------------------------------
-# Plotly 클릭 이벤트
-# streamlit-plotly-events 필요
+# 클릭 이벤트
 # --------------------------------
-from streamlit_plotly_events import plotly_events
-
 selected_points = plotly_events(
     fig,
     click_event=True,
@@ -172,7 +195,7 @@ selected_points = plotly_events(
 )
 
 # --------------------------------
-# 클릭 시 MBTI 변경
+# 클릭한 MBTI로 자동 변경
 # --------------------------------
 if selected_points:
     clicked_mbti = selected_points[0]["x"]
@@ -182,7 +205,15 @@ if selected_points:
         st.rerun()
 
 # --------------------------------
-# 최고 MBTI
+# 그래프 출력
+# --------------------------------
+st.plotly_chart(
+    fig,
+    use_container_width=True
+)
+
+# --------------------------------
+# 최고 MBTI 표시
 # --------------------------------
 top_mbti = chart_df.iloc[0]
 
@@ -194,10 +225,17 @@ st.success(
 )
 
 # --------------------------------
-# 데이터 테이블
+# 전체 데이터
 # --------------------------------
 with st.expander("📄 전체 데이터 보기"):
+    display_df = chart_df.copy()
+
+    display_df["Ratio"] = (
+        display_df["Ratio"] * 100
+    ).round(2).astype(str) + "%"
+
     st.dataframe(
-        chart_df,
+        display_df,
         use_container_width=True
     )
+)
