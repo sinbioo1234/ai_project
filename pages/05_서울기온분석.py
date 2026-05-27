@@ -15,8 +15,14 @@ st.title("🌡️ 서울 연도별 기온 변화")
 def load_data():
     df = pd.read_csv("seoul.csv", encoding="euc-kr")
 
-    # 날짜 처리
-    df["날짜"] = pd.to_datetime(df["날짜"])
+    # 날짜 처리 수정
+    df["날짜"] = pd.to_datetime(
+        df["날짜"].astype(str).str.strip(),
+        errors="coerce"
+    )
+
+    # 날짜 오류 제거
+    df = df.dropna(subset=["날짜"])
 
     # 연/월/일 컬럼 생성
     df["연도"] = df["날짜"].dt.year
@@ -50,15 +56,10 @@ filtered = df[
     (df["일"] == selected_day)
 ].sort_values("연도")
 
-# 제목
-st.subheader(
-    f"{selected_month}월 {selected_day}일 연도별 최고/최저 기온"
-)
-
-# 그래프 생성
+# 그래프
 fig, ax = plt.subplots(figsize=(12, 6))
 
-# 최고기온 (핫핑크)
+# 최고기온
 ax.plot(
     filtered["연도"],
     filtered["최고기온(℃)"],
@@ -68,7 +69,7 @@ ax.plot(
     label="최고기온"
 )
 
-# 최저기온 (연한 파란색)
+# 최저기온
 ax.plot(
     filtered["연도"],
     filtered["최저기온(℃)"],
@@ -78,7 +79,6 @@ ax.plot(
     label="최저기온"
 )
 
-# 그래프 꾸미기
 ax.set_xlabel("연도")
 ax.set_ylabel("기온(℃)")
 ax.set_title(
@@ -88,10 +88,9 @@ ax.set_title(
 ax.grid(True)
 ax.legend()
 
-# 스트림릿에 출력
 st.pyplot(fig)
 
-# 데이터 표 출력
+# 데이터 표
 st.dataframe(
     filtered[
         ["연도", "최고기온(℃)", "최저기온(℃)"]
