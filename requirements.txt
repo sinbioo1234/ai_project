@@ -6,4 +6,5 @@ plotly
 streamlit-plotly-events
 folium
 streamlit-folium
-
+matplotlib
+openpyxl
