@@ -42,7 +42,7 @@ st.markdown("""
 @st.cache_data
 def load_data():
 
-    df = pd.read_csv("발로란트 에이전트 데이터.csv")
+    df = pd.read_csv("valorant_agents_data.csv")
 
     df["WinRate_num"] = (
         df["WinRate"]
