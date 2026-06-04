@@ -1,225 +1,325 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 
-# =========================
+# ==============================
+
 # 페이지 설정
-# =========================
+
+# ==============================
 
 st.set_page_config(
-    page_title="VALORANT Agent Dashboard",
-    page_icon="🎯",
-    layout="wide"
+page_title="VALORANT Agent Dashboard",
+page_icon="🎯",
+layout="wide"
 )
 
-# =========================
+# ==============================
+
+# CSS
+
+# ==============================
+
+st.markdown("""
+
+<style>
+
+.main {
+    background-color: #0f172a;
+}
+
+.agent-card {
+    padding: 15px;
+    border-radius: 15px;
+    background: linear-gradient(
+        135deg,
+        #1e293b,
+        #334155
+    );
+    margin-bottom: 10px;
+}
+
+.skill-card {
+    background-color: #111827;
+    padding: 12px;
+    border-radius: 12px;
+    border-left: 5px solid #ff4655;
+    margin-bottom: 8px;
+}
+
+</style>
+
+""", unsafe_allow_html=True)
+
+# ==============================
+
 # 데이터 로드
-# =========================
+
+# ==============================
 
 @st.cache_data
 def load_data():
-    return pd.read_csv("valorant_agents_data.csv")
+df = pd.read_csv("valorant_agents_data.csv")
 
-try:
-    df = load_data()
-except Exception as e:
-    st.error(f"CSV 파일을 불러오지 못했습니다.\n{e}")
-    st.stop()
+```
+df["WinRate_num"] = (
+    df["WinRate"]
+    .str.replace("%","", regex=False)
+    .astype(float)
+)
 
-# =========================
-# 컬럼 확인
-# =========================
+df["PickRate_num"] = (
+    df["PickRate"]
+    .str.replace("%","", regex=False)
+    .astype(float)
+)
 
-required_columns = [
-    "Name",
-    "Role",
-    "WinRate",
-    "PickRate",
-    "Skills",
-    "Description"
-]
+return df
+```
 
-missing = [col for col in required_columns if col not in df.columns]
+df = load_data()
 
-if missing:
-    st.error(f"CSV에 없는 컬럼: {missing}")
-    st.stop()
+# ==============================
 
-# =========================
-# 헤더
-# =========================
+# 제목
+
+# ==============================
 
 st.title("🎯 VALORANT Agent Dashboard")
-st.markdown("### 원하는 요원을 선택해 정보를 확인해보세요!")
+st.markdown(
+"### 🔥 발로란트 요원 통계 및 정보 분석"
+)
 
 st.divider()
 
-# =========================
+# ==============================
+
 # 요원 선택
-# =========================
+
+# ==============================
 
 agent_name = st.selectbox(
-    "🔍 요원 선택",
-    sorted(df["Name"].unique())
+"🔍 요원을 선택하세요",
+sorted(df["Name"])
 )
 
 agent = df[df["Name"] == agent_name].iloc[0]
 
-# =========================
-# 역할 표시
-# =========================
+# ==============================
 
-role = str(agent["Role"])
-
-if role == "타격대":
-    role_color = "⚔️"
-elif role == "감시자":
-    role_color = "🛡️"
-elif role == "척후대":
-    role_color = "🔎"
-elif role == "전략가":
-    role_color = "🌫️"
-else:
-    role_color = "🎮"
-
-# =========================
 # 기본 정보
-# =========================
 
-col1, col2 = st.columns([1, 2])
+# ==============================
 
-with col1:
-    st.info(f"{role_color} {role}")
+left, right = st.columns([1,2])
 
-with col2:
-    st.subheader(f"👤 {agent['Name']}")
+with left:
 
-st.write("### 📖 요원 소개")
-st.write(agent["Description"])
+```
+role = agent["Role"]
 
-st.divider()
+if "타격대" in role:
+    st.success(f"⚔️ {role}")
 
-# =========================
+elif "감시자" in role:
+    st.info(f"🛡️ {role}")
+
+elif "척후대" in role:
+    st.warning(f"🔎 {role}")
+
+else:
+    st.error(f"🌫️ {role}")
+```
+
+with right:
+
+```
+st.markdown(
+    f"""
+    <div class="agent-card">
+    <h2>👤 {agent['Name']}</h2>
+    <p>{agent['Description']}</p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+```
+
+# ==============================
+
 # 통계
-# =========================
+
+# ==============================
 
 st.subheader("📊 요원 통계")
 
 c1, c2 = st.columns(2)
 
 with c1:
-    st.metric(
-        "🏆 승률",
-        f"{agent['WinRate']}%"
-    )
+st.metric(
+"🏆 승률",
+agent["WinRate"]
+)
 
 with c2:
-    st.metric(
-        "🔥 픽률",
-        f"{agent['PickRate']}%"
-    )
+st.metric(
+"🔥 픽률",
+agent["PickRate"]
+)
 
-st.divider()
+# ==============================
 
-# =========================
 # 스킬
-# =========================
 
-st.subheader("✨ 스킬")
+# ==============================
 
-skills = str(agent["Skills"])
+st.subheader("✨ 보유 스킬")
 
-# 쉼표 기준 분리
-skill_list = [s.strip() for s in skills.split(",")]
+skills = [
+skill.strip()
+for skill in agent["Skills"].split(",")
+]
 
-for skill in skill_list:
+for skill in skills:
 
-    st.markdown(
-        f"""
-<div style="
-background-color:#1e293b;
-padding:12px;
-border-radius:10px;
-margin-bottom:10px;
-border-left:5px solid #ff4655;
-">
-🎯 {skill}
-</div>
-""",
-        unsafe_allow_html=True
-    )
+```
+st.markdown(
+    f"""
+    <div class="skill-card">
+    🎯 {skill}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+```
 
 st.divider()
 
-# =========================
+# ==============================
+
 # TOP 5 승률
-# =========================
+
+# ==============================
 
 st.subheader("🏆 승률 TOP 5")
 
-top_win = df.sort_values(
-    "WinRate",
-    ascending=False
-).head(5)
-
-st.dataframe(
-    top_win[
-        ["Name", "WinRate"]
-    ],
-    use_container_width=True
+top_win = (
+df
+.sort_values(
+"WinRate_num",
+ascending=False
+)
+.head(5)
 )
 
-# =========================
+st.dataframe(
+top_win[
+["Name","WinRate"]
+],
+use_container_width=True
+)
+
+# ==============================
+
 # TOP 5 픽률
-# =========================
+
+# ==============================
 
 st.subheader("🔥 픽률 TOP 5")
 
-top_pick = df.sort_values(
-    "PickRate",
-    ascending=False
-).head(5)
+top_pick = (
+df
+.sort_values(
+"PickRate_num",
+ascending=False
+)
+.head(5)
+)
 
 st.dataframe(
-    top_pick[
-        ["Name", "PickRate"]
-    ],
-    use_container_width=True
+top_pick[
+["Name","PickRate"]
+],
+use_container_width=True
 )
 
-# =========================
-# 전체 순위
-# =========================
+# ==============================
 
-st.subheader("📈 전체 요원 순위")
+# 그래프
 
-sort_option = st.radio(
-    "정렬 기준",
-    ["승률", "픽률"],
-    horizontal=True
+# ==============================
+
+st.subheader("📈 전체 픽률 순위")
+
+fig_pick = px.bar(
+df.sort_values(
+"PickRate_num",
+ascending=False
+),
+x="Name",
+y="PickRate_num"
 )
 
-if sort_option == "승률":
+st.plotly_chart(
+fig_pick,
+use_container_width=True
+)
 
-    ranking = df.sort_values(
-        "WinRate",
-        ascending=False
-    )
+st.subheader("📊 전체 승률 순위")
 
-else:
+fig_win = px.bar(
+df.sort_values(
+"WinRate_num",
+ascending=False
+),
+x="Name",
+y="WinRate_num"
+)
 
-    ranking = df.sort_values(
-        "PickRate",
-        ascending=False
-    )
+st.plotly_chart(
+fig_win,
+use_container_width=True
+)
+
+# ==============================
+
+# 전체 순위표
+
+# ==============================
+
+st.subheader("🏅 전체 요원 데이터")
 
 st.dataframe(
-    ranking[
-        [
-            "Name",
-            "Role",
-            "WinRate",
-            "PickRate"
-        ]
-    ],
-    use_container_width=True
+df[
+[
+"Name",
+"Role",
+"WinRate",
+"PickRate"
+]
+],
+use_container_width=True
 )
+
+# ==============================
+
+# 메타 분석
+
+# ==============================
+
+best_win = df.loc[
+df["WinRate_num"].idxmax()
+]
+
+best_pick = df.loc[
+df["PickRate_num"].idxmax()
+]
+
+st.success(
+f"🏆 최고 승률 요원: {best_win['Name']} ({best_win['WinRate']})"
+)
+
+st.info(
+f"🔥 최고 픽률 요원: {best_pick['Name']} ({best_pick['PickRate']})"
+)
+
