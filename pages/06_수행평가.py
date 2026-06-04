@@ -13,25 +13,33 @@ st.set_page_config(
 )
 
 # =========================
-# 스타일
+# CSS 스타일
 # =========================
 
 st.markdown("""
 <style>
+
+.agent-box{
+    background: linear-gradient(
+        135deg,
+        #334155,
+        #475569
+    );
+    color:white;
+    padding:20px;
+    border-radius:15px;
+    margin-bottom:15px;
+}
+
 .skill-box{
     background-color:#1e293b;
+    color:white;
     padding:12px;
     border-radius:10px;
     margin-bottom:8px;
     border-left:5px solid #ff4655;
-    color:white;
 }
 
-.agent-box{
-    background-color:#111827;
-    padding:15px;
-    border-radius:12px;
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -68,7 +76,7 @@ df = load_data()
 # =========================
 
 st.title("🎯 VALORANT Agent Dashboard")
-st.markdown("### 🔥 발로란트 요원 통계 및 정보")
+st.markdown("### 🔥 발로란트 요원 통계 및 정보 분석")
 
 st.divider()
 
@@ -77,7 +85,7 @@ st.divider()
 # =========================
 
 agent_name = st.selectbox(
-    "🔍 요원 선택",
+    "🔍 요원을 선택하세요",
     sorted(df["Name"].unique())
 )
 
@@ -110,8 +118,11 @@ with col2:
     st.markdown(
         f"""
         <div class="agent-box">
-        <h2>👤 {agent['Name']}</h2>
-        <p>{agent['Description']}</p>
+            <h2>👤 {agent['Name']}</h2>
+            <hr>
+            <p style="font-size:18px;">
+                {agent['Description']}
+            </p>
         </div>
         """,
         unsafe_allow_html=True
@@ -120,8 +131,6 @@ with col2:
 # =========================
 # 통계
 # =========================
-
-st.divider()
 
 st.subheader("📊 요원 통계")
 
@@ -154,7 +163,7 @@ for skill in skills:
     st.markdown(
         f"""
         <div class="skill-box">
-        🎯 {skill.strip()}
+            🎯 {skill.strip()}
         </div>
         """,
         unsafe_allow_html=True
